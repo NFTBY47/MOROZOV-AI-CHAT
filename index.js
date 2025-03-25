@@ -1,6 +1,7 @@
-const API_KEY = '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';
+const API_KEY = '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';
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+// Получаем элементы интерфейса
 const chatContainer = document.getElementById('chatContainer');
 const userInput = document.getElementById('userInput');
 const sendButton = document.getElementById('sendButton');
@@ -12,7 +13,12 @@ let isWaitingForResponse = false;
 // Инициализация приложения
 function init() {
     sendButton.addEventListener('click', sendMessage);
-    userInput.addEventListener('keydown', handleKeyDown);
+    userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
     clearChatButton.addEventListener('click', clearChat);
     userInput.addEventListener('input', updateSendButtonState);
     
@@ -20,6 +26,7 @@ function init() {
     updateSendButtonState();
 }
 
+// Отправка сообщения (ОСНОВНОЙ ИСПРАВЛЕННЫЙ МЕТОД)
 async function sendMessage() {
     const message = userInput.value.trim();
     if (!message || isWaitingForResponse) return;
@@ -34,14 +41,19 @@ async function sendMessage() {
     try {
         conversationHistory.push({ role: 'user', content: message });
         
+        // КРИТИЧЕСКИ ВАЖНЫЕ ЗАГОЛОВКИ
+        const headers = {
+            'Authorization': `Bearer ${API_KEY}`,
+            'HTTP-Referer': window.location.href, // Текущий URL
+            'X-Title': 'AI Chat App',
+            'Content-Type': 'application/json'
+        };
+
+        console.log('Отправляемые заголовки:', headers); // Для отладки
+        
         const response = await fetch(API_URL, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${API_KEY}`,
-                'HTTP-Referer': window.location.href,
-                'X-Title': 'OpenChat AI',
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({
                 model: "openchat/openchat-7b",
                 messages: conversationHistory,
@@ -69,7 +81,6 @@ async function sendMessage() {
     } catch (error) {
         console.error('API Error:', error);
         addMessage(`Ошибка: ${error.message}. Пожалуйста, попробуйте еще раз.`, 'bot');
-        conversationHistory = conversationHistory.slice(0, -1);
     } finally {
         hideLoadingIndicator(loadingId);
         isWaitingForResponse = false;
@@ -77,6 +88,7 @@ async function sendMessage() {
     }
 }
 
+// Вспомогательные функции
 function addMessage(text, sender) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}-message`;
@@ -115,13 +127,6 @@ function showLoadingIndicator() {
 function hideLoadingIndicator(id) {
     const loadingElement = document.getElementById(id);
     if (loadingElement) loadingElement.remove();
-}
-
-function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (!sendButton.disabled) sendMessage();
-    }
 }
 
 function updateSendButtonState() {
@@ -176,4 +181,5 @@ function loadHistory() {
     }
 }
 
+// Запуск приложения
 document.addEventListener('DOMContentLoaded', init);
